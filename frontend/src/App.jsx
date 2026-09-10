@@ -13,7 +13,7 @@ import './styles/design-tokens.css';
 
 export default function App() {
   const [cities, setCities] = useState([]);
-  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedCity, setSelectedCity] = useState('Tokyo');
   const [weatherData, setWeatherData] = useState(null);
   const [cacheStatus, setCacheStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -348,16 +348,16 @@ export default function App() {
         {/* Main Weather Region: Loading State or WeatherCard */}
         <div style={{ position: 'relative', width: '100%' }}>
           <AnimatePresence mode="wait">
-            {loading && !weatherData ? (
+            {loading || !weatherData ? (
               <LoadingState key="skeleton-loader" />
-            ) : weatherData ? (
+            ) : (
               <WeatherCard
                 key={weatherData.cityName}
                 weatherData={weatherData}
                 cacheStatus={cacheStatus}
                 lastUpdatedText={relativeTime}
               />
-            ) : null}
+            )}
           </AnimatePresence>
         </div>
 
