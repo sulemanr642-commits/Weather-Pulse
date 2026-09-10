@@ -38,7 +38,8 @@ import java.time.Instant;
     },
     indexes = {
         @Index(name = "idx_city_active", columnList = "is_active"),
-        @Index(name = "idx_city_name_lower", columnList = "name")
+        @Index(name = "idx_city_name_lower", columnList = "name"),
+        @Index(name = "idx_city_active_name", columnList = "is_active, name")
     }
 )
 @Getter

@@ -1,6 +1,8 @@
 package com.weatherpulse.repository;
 
 import com.weatherpulse.entity.City;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -16,9 +18,25 @@ public interface CityRepository extends JpaRepository<City, Long> {
 
     /**
      * Retrieves all active tracked cities ordered alphabetically by name.
-     * Used by the public GET /api/cities endpoint and the scheduler.
+     * Used by the public GET /api/cities endpoint and legacy list readers.
      */
     List<City> findByIsActiveTrueOrderByNameAsc();
+
+    /**
+     * High-capacity paginated retrieval of active tracked cities.
+     * Used by cursor-based batching in the scheduler and paginated UI endpoints.
+     */
+    Page<City> findByIsActiveTrueOrderByNameAsc(Pageable pageable);
+
+    /**
+     * Fast, index-accelerated case-insensitive search with pagination.
+     */
+    Page<City> findByIsActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String name, Pageable pageable);
+
+    /**
+     * Case-insensitive substring search for active cities.
+     */
+    List<City> findByIsActiveTrueAndNameContainingIgnoreCaseOrderByNameAsc(String name);
 
     /**
      * Looks up an active city by name (case-insensitive).

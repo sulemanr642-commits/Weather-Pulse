@@ -5,6 +5,7 @@ import com.weatherpulse.client.dto.WeatherData;
 import com.weatherpulse.client.exception.WeatherApiException;
 import com.weatherpulse.entity.City;
 import com.weatherpulse.repository.CityRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,13 +13,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -46,10 +49,19 @@ class WeatherRefreshSchedulerTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(scheduler, "cacheTtlMs", 600000L);
+        ReflectionTestUtils.setField(scheduler, "batchSize", 50);
+        ReflectionTestUtils.setField(scheduler, "concurrency", 4);
+        ReflectionTestUtils.setField(scheduler, "throttleMs", 0L);
+        scheduler.initExecutor();
+    }
+
+    @AfterEach
+    void tearDown() {
+        scheduler.shutdownExecutor();
     }
 
     @Test
-    @DisplayName("Scheduler: Proactively refreshes all active cities and writes directly to Redis")
+    @DisplayName("Scheduler: Proactively refreshes all active cities and writes directly to Redis in parallel batches")
     void testRefreshTrackedCitiesWeather_AllSuccess() {
         City tokyo = City.builder().id(1L).name("Tokyo").countryCode("JP").isActive(true).build();
         City london = City.builder().id(2L).name("London").countryCode("GB").isActive(true).build();
@@ -70,14 +82,15 @@ class WeatherRefreshSchedulerTest {
                 .fetchedAt(Instant.now())
                 .build();
 
-        when(cityRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(tokyo, london));
+        Page<City> page1 = new PageImpl<>(List.of(tokyo, london));
+        when(cityRepository.findByIsActiveTrueOrderByNameAsc(any(Pageable.class))).thenReturn(page1);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(weatherApiClient.fetchCurrentWeather("Tokyo", "JP")).thenReturn(tokyoWeather);
         when(weatherApiClient.fetchCurrentWeather("London", "GB")).thenReturn(londonWeather);
 
         scheduler.refreshTrackedCitiesWeather();
 
-        verify(cityRepository).findByIsActiveTrueOrderByNameAsc();
+        verify(cityRepository, atLeastOnce()).findByIsActiveTrueOrderByNameAsc(any(Pageable.class));
         verify(weatherApiClient).fetchCurrentWeather("Tokyo", "JP");
         verify(weatherApiClient).fetchCurrentWeather("London", "GB");
 
@@ -95,7 +108,8 @@ class WeatherRefreshSchedulerTest {
         WeatherData tokyoWeather = WeatherData.builder().cityName("Tokyo").build();
         WeatherData londonWeather = WeatherData.builder().cityName("London").build();
 
-        when(cityRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(List.of(tokyo, brokenCity, london));
+        Page<City> page1 = new PageImpl<>(List.of(tokyo, brokenCity, london));
+        when(cityRepository.findByIsActiveTrueOrderByNameAsc(any(Pageable.class))).thenReturn(page1);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
         when(weatherApiClient.fetchCurrentWeather("Tokyo", "JP")).thenReturn(tokyoWeather);
@@ -119,11 +133,11 @@ class WeatherRefreshSchedulerTest {
     @Test
     @DisplayName("Scheduler: Skips processing when no active cities exist")
     void testRefreshTrackedCitiesWeather_EmptyList() {
-        when(cityRepository.findByIsActiveTrueOrderByNameAsc()).thenReturn(Collections.emptyList());
+        when(cityRepository.findByIsActiveTrueOrderByNameAsc(any(Pageable.class))).thenReturn(Page.empty());
 
         scheduler.refreshTrackedCitiesWeather();
 
-        verify(cityRepository).findByIsActiveTrueOrderByNameAsc();
+        verify(cityRepository).findByIsActiveTrueOrderByNameAsc(any(Pageable.class));
         verifyNoInteractions(weatherApiClient);
         verifyNoInteractions(redisTemplate);
     }

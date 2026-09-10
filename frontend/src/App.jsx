@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCities, getWeather } from './services/api';
 import { 
@@ -14,19 +14,55 @@ import {
   CloudRain,
   Cloud,
   Snowflake,
-  Zap
+  Zap,
+  Search,
+  MapPin,
+  ChevronDown,
+  X,
+  Check
 } from 'lucide-react';
 import './styles/design-tokens.css';
 
 export default function App() {
   const [cities, setCities] = useState([]);
   const [selectedCity, setSelectedCity] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const [weatherData, setWeatherData] = useState(null);
   const [cacheStatus, setCacheStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshCountdown, setRefreshCountdown] = useState(60);
+
+  const featuredCities = ['Tokyo', 'London', 'New York', 'Paris', 'Dubai', 'Sydney', 'Singapore', 'Berlin'];
+
+  // Handle click outside to dismiss combobox
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter cities in real-time
+  const filteredCities = useMemo(() => {
+    if (!searchTerm.trim()) return cities;
+    const query = searchTerm.toLowerCase().trim();
+    return cities.filter(
+      (c) => c.name.toLowerCase().includes(query) || c.countryCode.toLowerCase().includes(query)
+    );
+  }, [cities, searchTerm]);
+
+  const handleSelectCity = (cityName) => {
+    setSelectedCity(cityName);
+    setSearchTerm('');
+    setIsDropdownOpen(false);
+  };
 
   // 1. Fetch tracked cities on mount
   useEffect(() => {
@@ -190,89 +226,245 @@ export default function App() {
         {/* City Selector & Telemetry Bar */}
         <section style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: 'column',
           gap: '16px',
-          padding: '16px 24px',
+          padding: '20px 24px',
           borderRadius: 'var(--radius-md)',
           background: 'var(--glass-bg-primary)',
           backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
           border: 'var(--glass-border-light)',
-          boxShadow: 'var(--glass-shadow-sm)'
+          boxShadow: 'var(--glass-shadow-sm)',
+          position: 'relative'
         }}>
-          {/* City Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <label htmlFor="city-select" style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-secondary)' }}>
-              Select City:
-            </label>
-            <select
-              id="city-select"
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 'var(--radius-sm)',
-                background: 'rgba(15, 23, 42, 0.65)',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                color: '#fff',
-                fontSize: '15px',
-                fontWeight: '600',
-                outline: 'none',
-                cursor: 'pointer',
-                minWidth: '180px'
-              }}
-            >
-              {cities.map((city) => (
-                <option key={city.id} value={city.name} style={{ background: '#0f172a', color: '#fff' }}>
-                  {city.name} ({city.countryCode})
-                </option>
-              ))}
-            </select>
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px',
+            width: '100%'
+          }}>
+            {/* Searchable Combobox */}
+            <div ref={dropdownRef} style={{ position: 'relative', flex: '1', minWidth: '280px', maxWidth: '420px' }}>
+              <div 
+                onClick={() => setIsDropdownOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(15, 23, 42, 0.75)',
+                  border: isDropdownOpen ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.25)',
+                  boxShadow: isDropdownOpen ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'text'
+                }}
+              >
+                <Search size={16} color="var(--text-muted)" />
+                <input
+                  type="text"
+                  placeholder={selectedCity ? `${selectedCity} (Type to search 254+ cities)...` : "Search city..."}
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: '#fff',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    width: '100%'
+                  }}
+                />
+                {searchTerm ? (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSearchTerm(''); }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                  >
+                    <X size={14} />
+                  </button>
+                ) : (
+                  <ChevronDown size={14} color="var(--text-muted)" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                )}
+              </div>
+
+              {/* Floating Dropdown Results */}
+              <AnimatePresence>
+                {isDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 4 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      maxHeight: '300px',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      backdropFilter: 'blur(25px)',
+                      WebkitBackdropFilter: 'blur(25px)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      borderRadius: 'var(--radius-sm)',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.6)',
+                      overflowY: 'auto',
+                      zIndex: 100,
+                      padding: '6px'
+                    }}
+                  >
+                    <div style={{
+                      padding: '8px 10px',
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <span>Matching Cities ({filteredCities.length})</span>
+                      <span>Instant Filter</span>
+                    </div>
+
+                    {filteredCities.length === 0 ? (
+                      <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        No tracked cities matching "{searchTerm}"
+                      </div>
+                    ) : (
+                      filteredCities.slice(0, 50).map((c) => {
+                        const isSelected = selectedCity.toLowerCase() === c.name.toLowerCase();
+                        return (
+                          <div
+                            key={c.id || c.name}
+                            onClick={() => handleSelectCity(c.name)}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '6px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              background: isSelected ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                              color: isSelected ? '#38bdf8' : '#e2e8f0',
+                              transition: 'background 0.15s ease',
+                              fontSize: '14px',
+                              fontWeight: isSelected ? '600' : '400'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.08)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(56, 189, 248, 0.2)' : 'transparent'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <MapPin size={14} color={isSelected ? '#38bdf8' : 'var(--text-muted)'} />
+                              <span>{c.name}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{
+                                fontSize: '11px',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: 'var(--text-secondary)'
+                              }}>
+                                {c.countryCode}
+                              </span>
+                              {isSelected && <Check size={14} color="#38bdf8" />}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Telemetry Status & Manual Refresh */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {cacheStatus && (
+                <span style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-pill)',
+                  background: cacheStatus === 'HIT' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                  border: cacheStatus === 'HIT' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(245, 158, 11, 0.5)',
+                  color: cacheStatus === 'HIT' ? '#34d399' : '#fbbf24',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Server size={12} />
+                  X-Cache: {cacheStatus}
+                </span>
+              )}
+
+              <button
+                onClick={() => fetchWeather(selectedCity, true)}
+                disabled={loading}
+                title="Click to force fresh read"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: '#fff',
+                  padding: '8px 14px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Fetching...' : `Auto in ${refreshCountdown}s`}
+              </button>
+            </div>
           </div>
 
-          {/* Telemetry Status & Manual Refresh */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {cacheStatus && (
-              <span style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                padding: '4px 12px',
-                borderRadius: 'var(--radius-pill)',
-                background: cacheStatus === 'HIT' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                border: cacheStatus === 'HIT' ? '1px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(245, 158, 11, 0.5)',
-                color: cacheStatus === 'HIT' ? '#34d399' : '#fbbf24',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <Server size={12} />
-                X-Cache: {cacheStatus}
-              </span>
-            )}
-
-            <button
-              onClick={() => fetchWeather(selectedCity, true)}
-              disabled={loading}
-              title="Click to force fresh read"
-              style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: 'var(--radius-sm)',
-                color: '#fff',
-                padding: '8px 14px',
-                fontSize: '13px',
-                fontWeight: '500',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Fetching...' : `Auto in ${refreshCountdown}s`}
-            </button>
+          {/* Quick-Filter Featured City Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', paddingTop: '4px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Featured:
+            </span>
+            {featuredCities.map((hub) => {
+              const isActive = selectedCity.toLowerCase() === hub.toLowerCase();
+              return (
+                <button
+                  key={hub}
+                  onClick={() => handleSelectCity(hub)}
+                  style={{
+                    background: isActive ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.3) 0%, rgba(30, 58, 138, 0.4) 100%)' : 'rgba(255, 255, 255, 0.06)',
+                    border: isActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                    color: isActive ? '#fff' : 'var(--text-secondary)',
+                    borderRadius: 'var(--radius-pill)',
+                    padding: '4px 10px',
+                    fontSize: '12px',
+                    fontWeight: isActive ? '600' : '400',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isActive ? '0 0 10px rgba(56, 189, 248, 0.3)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                  }}
+                >
+                  {hub}
+                </button>
+              );
+            })}
           </div>
         </section>
 
