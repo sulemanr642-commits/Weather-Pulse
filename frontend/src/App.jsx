@@ -268,7 +268,7 @@ export default function App() {
                 <Search size={16} color="var(--text-muted)" />
                 <input
                   type="text"
-                  placeholder={selectedCity ? `${selectedCity} (Type to search 254+ cities)...` : "Search city..."}
+                  placeholder={selectedCity ? `${selectedCity} (Search all ${cities.length} cities)...` : `Search all ${cities.length} cities...`}
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
@@ -310,7 +310,7 @@ export default function App() {
                       top: '100%',
                       left: 0,
                       right: 0,
-                      maxHeight: '300px',
+                      maxHeight: '380px',
                       background: 'rgba(15, 23, 42, 0.95)',
                       backdropFilter: 'blur(25px)',
                       WebkitBackdropFilter: 'blur(25px)',
@@ -333,8 +333,8 @@ export default function App() {
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     }}>
-                      <span>Matching Cities ({filteredCities.length})</span>
-                      <span>Instant Filter</span>
+                      <span>All Tracked Cities ({filteredCities.length})</span>
+                      <span>1-Click Weather</span>
                     </div>
 
                     {filteredCities.length === 0 ? (
@@ -342,7 +342,7 @@ export default function App() {
                         No tracked cities matching "{searchTerm}"
                       </div>
                     ) : (
-                      filteredCities.slice(0, 50).map((c) => {
+                      filteredCities.map((c) => {
                         const isSelected = selectedCity.toLowerCase() === c.name.toLowerCase();
                         return (
                           <div
