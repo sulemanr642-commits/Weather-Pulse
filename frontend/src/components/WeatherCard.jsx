@@ -12,7 +12,7 @@ import {
   Snowflake, 
   Zap 
 } from 'lucide-react';
-import Weather3DIcon from './Weather3DIcon';
+import WeatherSymbol from './WeatherSymbol';
 
 /**
  * Generates realistic 5-day future forecast deterministically based on city and current metrics.
@@ -68,18 +68,6 @@ function generate5DayForecast(weatherData) {
   }
 
   return forecast;
-}
-
-/**
- * Returns vector icon for 5-day forecast cards
- */
-function renderForecastIcon(cond) {
-  const c = (cond || '').toLowerCase();
-  if (c.includes('rain')) return <CloudRain size={22} color="#38bdf8" />;
-  if (c.includes('cloud')) return <Cloud size={22} color="#cbd5e1" />;
-  if (c.includes('snow')) return <Snowflake size={22} color="#a5f3fc" />;
-  if (c.includes('thunder')) return <Zap size={22} color="#fbbf24" />;
-  return <SunMedium size={22} color="#f59e0b" />;
 }
 
 /**
@@ -166,8 +154,8 @@ export default function WeatherCard({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          {/* Isolated 3D Procedural Weather Icon */}
-          <Weather3DIcon condition={weatherData.weatherCondition} size={110} />
+          {/* Ultra-Vibrant Animated Weather Illustration */}
+          <WeatherSymbol condition={weatherData.weatherCondition} size={120} />
 
           {/* Large Temperature Display */}
           <div style={{ textAlign: 'right' }}>
@@ -359,8 +347,8 @@ export default function WeatherCard({
               </div>
 
               {/* Weather Icon */}
-              <div style={{ margin: '4px 0' }}>
-                {renderForecastIcon(f.condition)}
+              <div style={{ margin: '4px 0', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <WeatherSymbol condition={f.condition} size={42} />
               </div>
 
               {/* Condition Label */}

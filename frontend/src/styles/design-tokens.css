@@ -39,11 +39,11 @@
   --radius-pill: 9999px;
 
   /* --- Atmospheric Dynamic Background Gradients --- */
-  --weather-clear: radial-gradient(circle at 20% 20%, #38bdf8 0%, #1e3a8a 70%, #0f172a 100%);
-  --weather-clouds: radial-gradient(circle at 30% 30%, #94a3b8 0%, #334155 70%, #0f172a 100%);
-  --weather-rain: radial-gradient(circle at 40% 20%, #0284c7 0%, #1e293b 70%, #090d16 100%);
-  --weather-thunder: radial-gradient(circle at 50% 10%, #6366f1 0%, #311042 60%, #05050c 100%);
-  --weather-snow: radial-gradient(circle at 25% 25%, #cbd5e1 0%, #475569 65%, #0f172a 100%);
+  --weather-clear: radial-gradient(circle at 50% -10%, #0284c7 0%, #1d4ed8 35%, #312e81 75%, #0f172a 100%);
+  --weather-clouds: radial-gradient(circle at 50% -10%, #60a5fa 0%, #4f46e5 35%, #334155 75%, #0f172a 100%);
+  --weather-rain: radial-gradient(circle at 50% -10%, #0ea5e9 0%, #0284c7 35%, #0f375a 70%, #090d16 100%);
+  --weather-thunder: radial-gradient(circle at 50% -10%, #9333ea 0%, #581c87 40%, #1e1b4b 80%, #090817 100%);
+  --weather-snow: radial-gradient(circle at 50% -10%, #7dd3fc 0%, #2563eb 35%, #1e293b 75%, #0b1120 100%);
 
   /* --- Status & Telemetry Accents --- */
   --status-cache-hit: #10b981; /* Emerald green */

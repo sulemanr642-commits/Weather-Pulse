@@ -7,6 +7,7 @@ import {
   LoadingState,
   ErrorState,
   AdminPanelModal,
+  AtmosphericBackground,
 } from './components';
 import { CloudSun, ShieldCheck, RefreshCw } from 'lucide-react';
 import './styles/design-tokens.css';
@@ -112,15 +113,15 @@ export default function App() {
     return () => clearInterval(refreshTimer);
   }, [selectedCity, fetchWeather]);
 
-  // Dynamic atmospheric gradient based on current condition
+  // Dynamic atmospheric gradient based on current condition (ultra-vibrant & luminous)
   const atmosphericBackground = useMemo(() => {
-    if (!weatherData) return 'var(--weather-clear)';
+    if (!weatherData) return 'radial-gradient(circle at 50% -10%, #38bdf8 0%, #1d4ed8 35%, #312e81 75%, #0f172a 100%)';
     const cond = (weatherData.weatherCondition || '').toLowerCase();
-    if (cond.includes('rain')) return 'var(--weather-rain)';
-    if (cond.includes('cloud')) return 'var(--weather-clouds)';
-    if (cond.includes('snow')) return 'var(--weather-snow)';
-    if (cond.includes('thunder')) return 'var(--weather-thunder)';
-    return 'var(--weather-clear)';
+    if (cond.includes('rain')) return 'radial-gradient(circle at 50% -10%, #0ea5e9 0%, #0284c7 35%, #0f375a 70%, #090d16 100%)';
+    if (cond.includes('cloud')) return 'radial-gradient(circle at 50% -10%, #60a5fa 0%, #4f46e5 35%, #334155 75%, #0f172a 100%)';
+    if (cond.includes('snow')) return 'radial-gradient(circle at 50% -10%, #7dd3fc 0%, #2563eb 35%, #1e293b 75%, #0b1120 100%)';
+    if (cond.includes('thunder')) return 'radial-gradient(circle at 50% -10%, #9333ea 0%, #581c87 40%, #1e1b4b 80%, #090817 100%)';
+    return 'radial-gradient(circle at 50% -10%, #0284c7 0%, #1d4ed8 35%, #312e81 75%, #0f172a 100%)';
   }, [weatherData]);
 
   return (
@@ -136,22 +137,12 @@ export default function App() {
         color: 'var(--text-primary)',
         fontFamily: 'var(--font-sans)',
         boxSizing: 'border-box',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      {/* Background ambient lighting blur */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '15%',
-          left: '25%',
-          width: '500px',
-          height: '500px',
-          background: 'radial-gradient(circle, rgba(56, 189, 248, 0.2) 0%, transparent 70%)',
-          filter: 'blur(80px)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
+      {/* Living Atmospheric Particle & Aurora Canvas */}
+      <AtmosphericBackground condition={weatherData?.weatherCondition || 'Clear'} />
 
       {/* Main Container */}
       <main
