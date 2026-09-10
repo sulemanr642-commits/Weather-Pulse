@@ -397,19 +397,6 @@ export default function AdminPanelModal({
                     {loginLoading ? 'Authenticating...' : 'Sign In to Admin Panel'}
                   </button>
                 </form>
-
-                <div style={{
-                  marginTop: '20px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  fontSize: '12px',
-                  color: 'var(--text-muted)',
-                  textAlign: 'center'
-                }}>
-                  Credentials: <strong style={{ color: '#38bdf8' }}>admin</strong> / <strong style={{ color: '#38bdf8' }}>AdminSecret123!</strong>
-                </div>
               </div>
             ) : (
               /* AUTHENTICATED ADMIN DASHBOARD */
