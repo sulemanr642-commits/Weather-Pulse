@@ -36,10 +36,12 @@ target/
 # Maven Wrapper & runtime metadata
 .mvn/wrapper/maven-wrapper.jar
 
-# Log files
+# Log files & local databases
 *.log
 **/logs/
 logfile.txt
+*.rdb
+dump.rdb
 
 # ------------------------------------------------------------------------------
 # Node.js / React / Vite

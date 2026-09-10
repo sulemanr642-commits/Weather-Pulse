@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import org.springframework.test.context.TestPropertySource;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * JPA entities are registered, and initial data seeding occurs as expected.
  */
 @SpringBootTest
+@TestPropertySource(properties = "weatherpulse.scheduler.enabled=false")
 class WeatherPulseApplicationTests {
 
     @Autowired

@@ -14,6 +14,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.core.io.ClassPathResource;
+
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
@@ -21,8 +25,8 @@ import java.util.List;
 
 /**
  * Data seeder executed at application startup.
- * Idempotently populates baseline tracked cities, the default administrator account,
- * and primes initial Redis cache snapshots for immediate browser viewing.
+ * Idempotently populates baseline tracked cities from a credible global dataset (GeoNames / GeoJSON),
+ * initializes the default administrator account, and primes initial Redis cache snapshots.
  */
 @Component
 @RequiredArgsConstructor
@@ -33,6 +37,7 @@ public class DataSeeder implements CommandLineRunner {
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final RedisTemplate<String, WeatherData> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Value("${weatherpulse.admin.default-username:admin}")
     private String defaultAdminUsername;
@@ -43,32 +48,52 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        seedTrackedCitiesIfEmpty();
+        seedTrackedCities();
         seedDefaultAdminUserIfEmpty();
         seedInitialWeatherCacheIfEmpty();
     }
 
-    private void seedTrackedCitiesIfEmpty() {
-        if (cityRepository.count() == 0) {
-            log.info("Database contains zero tracked cities. Initializing baseline city dataset...");
+    private void seedTrackedCities() {
+        try {
+            ClassPathResource resource = new ClassPathResource("data/world_cities.json");
+            if (!resource.exists()) {
+                log.warn("City seed dataset 'data/world_cities.json' not found on classpath.");
+                return;
+            }
 
-            List<City> initialCities = List.of(
-                City.builder().name("London").countryCode("GB").latitude(new BigDecimal("51.507351")).longitude(new BigDecimal("-0.127758")).isActive(true).build(),
-                City.builder().name("Tokyo").countryCode("JP").latitude(new BigDecimal("35.676192")).longitude(new BigDecimal("139.650311")).isActive(true).build(),
-                City.builder().name("New York").countryCode("US").latitude(new BigDecimal("40.712776")).longitude(new BigDecimal("-74.005974")).isActive(true).build(),
-                City.builder().name("Paris").countryCode("FR").latitude(new BigDecimal("48.856614")).longitude(new BigDecimal("2.352222")).isActive(true).build(),
-                City.builder().name("Sydney").countryCode("AU").latitude(new BigDecimal("-33.868820")).longitude(new BigDecimal("151.209296")).isActive(true).build(),
-                City.builder().name("Berlin").countryCode("DE").latitude(new BigDecimal("52.520008")).longitude(new BigDecimal("13.404954")).isActive(true).build(),
-                City.builder().name("Toronto").countryCode("CA").latitude(new BigDecimal("43.653226")).longitude(new BigDecimal("-79.383184")).isActive(true).build(),
-                City.builder().name("Singapore").countryCode("SG").latitude(new BigDecimal("1.352083")).longitude(new BigDecimal("103.819836")).isActive(true).build()
+            List<CitySeedDto> seedCities = objectMapper.readValue(
+                    resource.getInputStream(),
+                    new TypeReference<List<CitySeedDto>>() {}
             );
 
-            cityRepository.saveAll(initialCities);
-            log.info("Successfully seeded {} baseline tracked cities into PostgreSQL.", initialCities.size());
-        } else {
-            log.info("Database already contains {} tracked cities. Skipping city seeding.", cityRepository.count());
+            int insertedCount = 0;
+            for (CitySeedDto seed : seedCities) {
+                if (seed.name() != null && !cityRepository.existsByNameIgnoreCase(seed.name().trim())) {
+                    City city = City.builder()
+                            .name(seed.name().trim())
+                            .countryCode(seed.countryCode().trim().toUpperCase())
+                            .latitude(seed.latitude())
+                            .longitude(seed.longitude())
+                            .isActive(true)
+                            .build();
+                    cityRepository.save(city);
+                    insertedCount++;
+                }
+            }
+
+            if (insertedCount > 0) {
+                log.info("Successfully seeded {} new tracked cities into PostgreSQL from credible world dataset (Total: {}).",
+                        insertedCount, cityRepository.count());
+            } else {
+                log.info("All {} cities from credible seed dataset already exist in PostgreSQL.", seedCities.size());
+            }
+
+        } catch (Exception ex) {
+            log.error("Failed to seed tracked cities from world_cities.json: {}", ex.getMessage(), ex);
         }
     }
+
+    public record CitySeedDto(String name, String countryCode, BigDecimal latitude, BigDecimal longitude) {}
 
     private void seedDefaultAdminUserIfEmpty() {
         if (adminUserRepository.count() == 0) {
