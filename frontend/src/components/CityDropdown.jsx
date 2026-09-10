@@ -4,8 +4,8 @@ import { Search, ChevronDown, X, MapPin, Check } from 'lucide-react';
 
 /**
  * CityDropdown: Accessible, searchable glassmorphic combobox for selecting cities.
- * Populated from /api/cities (258+ global metropolises).
- * Includes keyboard navigation (ArrowUp, ArrowDown, Enter, Escape) and 1-click quick pills.
+ * Positioned on top-right to prevent covering the central weather presentation.
+ * Anchors the floating list to the right (right: 0) and includes keyboard navigation.
  */
 export default function CityDropdown({
   cities = [],
@@ -13,6 +13,8 @@ export default function CityDropdown({
   onSelectCity,
   featuredCities = ['Tokyo', 'London', 'New York', 'Paris', 'Dubai', 'Sydney', 'Singapore', 'Berlin'],
   loading = false,
+  showPills = false,
+  align = 'right',
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,9 +99,9 @@ export default function CityDropdown({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
-      {/* Searchable Combobox Container */}
-      <div ref={dropdownRef} style={{ position: 'relative', width: '100%', maxWidth: '460px' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* Searchable Combobox Input */}
+      <div ref={dropdownRef} style={{ position: 'relative', width: '100%', minWidth: '220px', maxWidth: '300px' }}>
         <div
           onClick={() => {
             setIsOpen(true);
@@ -108,13 +110,13 @@ export default function CityDropdown({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            padding: '11px 16px',
-            borderRadius: 'var(--radius-sm)',
-            background: 'rgba(15, 23, 42, 0.7)',
+            gap: '10px',
+            padding: '8px 14px',
+            borderRadius: 'var(--radius-pill)',
+            background: 'rgba(15, 23, 42, 0.75)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: isOpen ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(255, 255, 255, 0.2)',
+            border: isOpen ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(255, 255, 255, 0.22)',
             boxShadow: isOpen
               ? '0 0 16px rgba(56, 189, 248, 0.3), var(--glass-border-inner)'
               : 'var(--glass-shadow-sm), var(--glass-border-inner)',
@@ -122,7 +124,7 @@ export default function CityDropdown({
             cursor: 'text',
           }}
         >
-          <Search size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+          <Search size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
@@ -132,8 +134,8 @@ export default function CityDropdown({
             aria-label="Select or search city"
             placeholder={
               selectedCity
-                ? `${selectedCity} (Search ${cities.length} cities...)`
-                : `Search ${cities.length} tracked cities...`
+                ? `${selectedCity}...`
+                : `Search ${cities.length} cities...`
             }
             value={searchTerm}
             onChange={(e) => {
@@ -147,7 +149,7 @@ export default function CityDropdown({
               border: 'none',
               outline: 'none',
               color: 'var(--text-primary)',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '500',
               fontFamily: 'var(--font-sans)',
               width: '100%',
@@ -171,11 +173,11 @@ export default function CityDropdown({
               }}
               title="Clear search"
             >
-              <X size={15} />
+              <X size={14} />
             </button>
           ) : (
             <ChevronDown
-              size={15}
+              size={14}
               color="var(--text-muted)"
               style={{
                 transform: isOpen ? 'rotate(180deg)' : 'none',
@@ -186,33 +188,35 @@ export default function CityDropdown({
           )}
         </div>
 
-        {/* Floating Dropdown Results Menu */}
+        {/* Floating Dropdown Results Menu - Positioned to the right to never cover central weather */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
               ref={listRef}
               role="listbox"
               initial={{ opacity: 0, y: shouldReduceMotion ? 0 : -8, scale: 0.98 }}
-              animate={{ opacity: 1, y: 4, scale: 1 }}
+              animate={{ opacity: 1, y: 8, scale: 1 }}
               exit={{ opacity: 0, y: shouldReduceMotion ? 0 : -8, scale: 0.98 }}
               transition={{ duration: shouldReduceMotion ? 0.05 : 0.18, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 position: 'absolute',
                 top: '100%',
-                left: 0,
-                right: 0,
-                maxHeight: '380px',
-                background: 'rgba(15, 23, 42, 0.94)',
-                backdropFilter: 'blur(28px)',
-                WebkitBackdropFilter: 'blur(28px)',
+                right: align === 'right' ? 0 : 'auto',
+                left: align === 'left' ? 0 : 'auto',
+                width: '340px',
+                maxHeight: '400px',
+                background: 'rgba(15, 23, 42, 0.96)',
+                backdropFilter: 'blur(30px)',
+                WebkitBackdropFilter: 'blur(30px)',
                 border: '1px solid rgba(56, 189, 248, 0.35)',
-                borderRadius: 'var(--radius-sm)',
-                boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.15)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: '0 20px 45px rgba(0, 0, 0, 0.75), 0 0 25px rgba(56, 189, 248, 0.15)',
                 overflowY: 'auto',
-                zIndex: 100,
-                padding: '6px',
+                zIndex: 999,
+                padding: '8px',
               }}
             >
+              {/* Header Info */}
               <div
                 style={{
                   padding: '8px 10px',
@@ -229,6 +233,41 @@ export default function CityDropdown({
                 <span>Tracked Cities ({filteredCities.length})</span>
                 <span>1-Click Weather</span>
               </div>
+
+              {/* Quick Featured Hubs inside Dropdown */}
+              {featuredCities && featuredCities.length > 0 && !searchTerm && (
+                <div style={{ padding: '8px 6px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Popular Hubs:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {featuredCities.map((hub) => {
+                      const isActive = selectedCity.toLowerCase() === hub.toLowerCase();
+                      return (
+                        <button
+                          key={hub}
+                          type="button"
+                          onClick={() => handleSelect(hub)}
+                          style={{
+                            background: isActive
+                              ? 'rgba(56, 189, 248, 0.35)'
+                              : 'rgba(255, 255, 255, 0.08)',
+                            border: isActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)',
+                            color: isActive ? '#fff' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-pill)',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: isActive ? '600' : '400',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {hub}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {filteredCities.length === 0 ? (
                 <div
@@ -255,7 +294,7 @@ export default function CityDropdown({
                       onClick={() => handleSelect(c.name)}
                       onMouseEnter={() => setHighlightedIndex(idx)}
                       style={{
-                        padding: '10px 12px',
+                        padding: '9px 12px',
                         borderRadius: '6px',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -268,24 +307,24 @@ export default function CityDropdown({
                           : 'transparent',
                         color: isSelected ? '#38bdf8' : 'var(--text-primary)',
                         transition: 'background 0.12s ease',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         fontWeight: isSelected ? '600' : '400',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <MapPin
-                          size={14}
+                          size={13}
                           color={isSelected ? '#38bdf8' : 'var(--text-muted)'}
                           style={{ flexShrink: 0 }}
                         />
                         <span>{c.name}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span
                           style={{
-                            fontSize: '11px',
+                            fontSize: '10px',
                             fontWeight: '600',
-                            padding: '2px 7px',
+                            padding: '2px 6px',
                             borderRadius: '4px',
                             background: isSelected
                               ? 'rgba(56, 189, 248, 0.3)'
@@ -295,7 +334,7 @@ export default function CityDropdown({
                         >
                           {c.countryCode}
                         </span>
-                        {isSelected && <Check size={14} color="#38bdf8" />}
+                        {isSelected && <Check size={13} color="#38bdf8" />}
                       </div>
                     </div>
                   );
@@ -306,20 +345,9 @@ export default function CityDropdown({
         </AnimatePresence>
       </div>
 
-      {/* Quick Featured Hub Pills for Instant 1-Click Weather */}
-      {featuredCities && featuredCities.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span
-            style={{
-              fontSize: '11px',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.6px',
-              fontWeight: '600',
-            }}
-          >
-            Featured:
-          </span>
+      {/* Optional pill strip */}
+      {showPills && featuredCities && featuredCities.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           {featuredCities.map((hub) => {
             const isActive = selectedCity.toLowerCase() === hub.toLowerCase();
             return (
@@ -337,24 +365,11 @@ export default function CityDropdown({
                     : '1px solid rgba(255, 255, 255, 0.14)',
                   color: isActive ? '#fff' : 'var(--text-secondary)',
                   borderRadius: 'var(--radius-pill)',
-                  padding: '5px 12px',
-                  fontSize: '12px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
                   fontWeight: isActive ? '600' : '500',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                  boxShadow: isActive ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive && !loading) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.14)';
-                  }
                 }}
               >
                 {hub}
