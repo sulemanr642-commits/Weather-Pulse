@@ -1,0 +1,98 @@
+# ==============================================================================
+# WeatherPulse Multi-Stack .gitignore (Java/Spring Boot + React/Node)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Security & Sensitive Configuration (NEVER COMMIT CREDENTIALS)
+# ------------------------------------------------------------------------------
+# Frontend secrets & environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Backend active secrets & local configuration overrides
+**/application-local.properties
+**/application-local.yml
+**/application-secrets.properties
+**/secrets.properties
+**/private-key.pem
+
+# ------------------------------------------------------------------------------
+# Java / Spring Boot / Maven
+# ------------------------------------------------------------------------------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.rar
+
+# Maven Wrapper & runtime metadata
+.mvn/wrapper/maven-wrapper.jar
+
+# Log files
+*.log
+**/logs/
+logfile.txt
+
+# ------------------------------------------------------------------------------
+# Node.js / React / Vite
+# ------------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# ------------------------------------------------------------------------------
+# IDEs & Editor Configuration
+# ------------------------------------------------------------------------------
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# ------------------------------------------------------------------------------
+# Operating System Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
