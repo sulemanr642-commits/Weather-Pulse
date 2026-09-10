@@ -69,7 +69,7 @@ public class WeatherServiceImpl implements WeatherService {
                 .orElseThrow(() -> new CityNotFoundException(
                         "The city '" + canonicalCity + "' is not currently tracked by WeatherPulse."));
 
-        // Step 3: Fetch on-demand from upstream OpenWeatherMap API
+        // Step 3: Fetch on-demand from upstream meteorological provider (Open-Meteo / OpenWeatherMap)
         try {
             WeatherData freshData = weatherApiClient.fetchCurrentWeather(city.getName(), city.getCountryCode());
 

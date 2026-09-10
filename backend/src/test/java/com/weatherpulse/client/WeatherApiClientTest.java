@@ -78,6 +78,7 @@ class WeatherApiClientTest {
         server = MockRestServiceServer.bindTo(builder).build();
         RestClient restClient = builder.build();
         weatherApiClient = new WeatherApiClient(restClient, API_KEY);
+        weatherApiClient.setProvider("open-weather-map");
     }
 
     @Test
