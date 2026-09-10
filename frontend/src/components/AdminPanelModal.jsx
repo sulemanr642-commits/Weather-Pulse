@@ -16,9 +16,25 @@ import {
 } from 'lucide-react';
 import { loginAdmin, addAdminCity, deleteAdminCity } from '../services/api';
 
-export default function AdminPanelModal({ isOpen, onClose, cities, onCityAdded, onCityDeleted }) {
-  const [token, setToken] = useState(() => localStorage.getItem('weatherpulse_jwt') || '');
-  const [adminUsername, setAdminUsername] = useState(() => localStorage.getItem('weatherpulse_user') || '');
+export default function AdminPanelModal({ 
+  isOpen, 
+  onClose, 
+  cities, 
+  onCityAdded, 
+  onCityDeleted,
+  token: externalToken,
+  onTokenChange
+}) {
+  // In-memory token storage (React state only, never localStorage to limit token exposure)
+  const [token, setToken] = useState(externalToken || '');
+  const [adminUsername, setAdminUsername] = useState('');
+
+  // Sync if external token changes
+  useEffect(() => {
+    if (externalToken !== undefined) {
+      setToken(externalToken);
+    }
+  }, [externalToken]);
 
   // Login form state
   const [loginUser, setLoginUser] = useState('admin');
@@ -58,10 +74,10 @@ export default function AdminPanelModal({ isOpen, onClose, cities, onCityAdded, 
     try {
       const data = await loginAdmin(loginUser.trim(), loginPass);
       const jwt = data.token;
+      // Store strictly in memory
       setToken(jwt);
       setAdminUsername(data.username || loginUser.trim());
-      localStorage.setItem('weatherpulse_jwt', jwt);
-      localStorage.setItem('weatherpulse_user', data.username || loginUser.trim());
+      if (onTokenChange) onTokenChange(jwt, data.username || loginUser.trim());
       setLoginPass('');
     } catch (err) {
       console.error('Admin login error:', err);
@@ -73,10 +89,10 @@ export default function AdminPanelModal({ isOpen, onClose, cities, onCityAdded, 
   };
 
   const handleLogout = () => {
+    // Clear strictly in memory
     setToken('');
     setAdminUsername('');
-    localStorage.removeItem('weatherpulse_jwt');
-    localStorage.removeItem('weatherpulse_user');
+    if (onTokenChange) onTokenChange('', '');
     setAddStatus(null);
     setDeleteStatus(null);
   };
