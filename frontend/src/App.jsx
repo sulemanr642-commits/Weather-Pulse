@@ -22,6 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import './styles/design-tokens.css';
+import AdminPanelModal from './components/AdminPanelModal';
 
 export default function App() {
   const [cities, setCities] = useState([]);
@@ -34,7 +35,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [refreshCountdown, setRefreshCountdown] = useState(60);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   const featuredCities = ['Tokyo', 'London', 'New York', 'Paris', 'Dubai', 'Sydney', 'Singapore', 'Berlin'];
 
@@ -75,7 +76,7 @@ export default function App() {
         }
       } catch (err) {
         console.error('Failed to load cities:', err);
-        setError('Could not connect to backend. Ensure Spring Boot is running on port 8080.');
+        setError('Could not connect to backend service. Please verify network connectivity.');
       }
     }
     loadCities();
@@ -92,7 +93,6 @@ export default function App() {
       setWeatherData(result.data);
       setCacheStatus(result.cacheStatus);
       setLastUpdated(new Date());
-      setRefreshCountdown(60);
     } catch (err) {
       console.error('Weather fetch error:', err);
       const detail = err.response?.data?.detail || 'Failed to fetch meteorological observations.';
@@ -106,21 +106,6 @@ export default function App() {
     if (selectedCity) {
       fetchWeather(selectedCity, true);
     }
-  }, [selectedCity, fetchWeather]);
-
-  // 3. Silent auto-refresh every 60s
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRefreshCountdown((prev) => {
-        if (prev <= 1) {
-          if (selectedCity) fetchWeather(selectedCity, false);
-          return 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, [selectedCity, fetchWeather]);
 
   // Dynamic atmospheric background depending on current condition
@@ -205,21 +190,39 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              fontSize: '11px',
-              padding: '4px 10px',
-              borderRadius: 'var(--radius-pill)',
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.4)',
-              color: '#34d399',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#34d399' }} />
-              Redis 8 & PG 17 Live
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={() => setIsAdminModalOpen(true)}
+              title="Open Administrative Console to add or remove tracked cities"
+              style={{
+                fontSize: '13px',
+                fontWeight: '600',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-pill)',
+                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(30, 58, 138, 0.4) 100%)',
+                border: '1px solid rgba(56, 189, 248, 0.45)',
+                color: '#38bdf8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 2px 10px rgba(56, 189, 248, 0.2)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.35) 0%, rgba(30, 58, 138, 0.6) 100%)';
+                e.currentTarget.style.borderColor = '#38bdf8';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(56, 189, 248, 0.35)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(30, 58, 138, 0.4) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.45)';
+                e.currentTarget.style.boxShadow = '0 2px 10px rgba(56, 189, 248, 0.2)';
+              }}
+            >
+              <ShieldCheck size={16} />
+              <span>Admin Panel</span>
+            </button>
           </div>
         </header>
 
@@ -409,7 +412,7 @@ export default function App() {
               <button
                 onClick={() => fetchWeather(selectedCity, true)}
                 disabled={loading}
-                title="Click to force fresh read"
+                title="Click to refresh weather data"
                 style={{
                   background: 'rgba(255, 255, 255, 0.1)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -426,7 +429,7 @@ export default function App() {
                 }}
               >
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                {loading ? 'Fetching...' : `Auto in ${refreshCountdown}s`}
+                {loading ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -638,7 +641,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Architecture Status Footer */}
+        {/* Footer */}
         <footer style={{
           textAlign: 'center',
           fontSize: '12px',
@@ -646,17 +649,34 @@ export default function App() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          gap: '16px',
-          padding: '12px 0'
+          gap: '12px',
+          padding: '16px 0'
         }}>
-          <span>Spring Boot 3.3.4 (Port 8080)</span>
+          <span>WeatherPulse Enterprise</span>
           <span>•</span>
-          <span>PostgreSQL 17 (Port 5432)</span>
-          <span>•</span>
-          <span>Redis 8 (Port 6379)</span>
-          <span>•</span>
-          <span>React 18 + Vite (Port 5173)</span>
+          <span>Real-Time Meteorological Platform</span>
         </footer>
+
+        {/* Admin Management Modal */}
+        <AdminPanelModal
+          isOpen={isAdminModalOpen}
+          onClose={() => setIsAdminModalOpen(false)}
+          cities={cities}
+          onCityAdded={(newCity) => {
+            setCities((prev) => [newCity, ...prev]);
+            setSelectedCity(newCity.name);
+          }}
+          onCityDeleted={(deletedId) => {
+            setCities((prev) => {
+              const updated = prev.filter((c) => c.id !== deletedId);
+              if (selectedCity && !updated.some(c => c.name.toLowerCase() === selectedCity.toLowerCase())) {
+                if (updated.length > 0) setSelectedCity(updated[0].name);
+                else setSelectedCity('');
+              }
+              return updated;
+            });
+          }}
+        />
 
       </main>
     </div>
