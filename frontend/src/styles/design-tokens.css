@@ -1,0 +1,73 @@
+/* ==============================================================================
+   WeatherPulse iOS-Inspired Glassmorphism Design Tokens
+   Reflects specifications from docs/ui-design-system.md
+   ============================================================================== */
+
+:root {
+  /* --- Typography --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.70);
+  --text-muted: rgba(255, 255, 255, 0.45);
+
+  /* --- Surface Translucency & Blur --- */
+  --glass-bg-primary: rgba(255, 255, 255, 0.12);
+  --glass-bg-secondary: rgba(255, 255, 255, 0.06);
+  --glass-bg-elevated: rgba(255, 255, 255, 0.18);
+  --glass-bg-dark: rgba(15, 23, 42, 0.65);
+  --glass-blur-radius: 20px;
+  --glass-blur-subtle: 10px;
+  --glass-saturate: 180%;
+
+  /* --- Borders & Specular Bevels --- */
+  --glass-border-light: 1px solid rgba(255, 255, 255, 0.22);
+  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-border-inner: inset 0 1px 0 rgba(255, 255, 255, 0.35); /* Top specular bevel */
+  --glass-border-focus: 1px solid rgba(96, 165, 250, 0.7);
+
+  /* --- Depth & Elevation Shadows --- */
+  --glass-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.16);
+  --glass-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.28);
+  --glass-shadow-glow: 0 0 30px rgba(96, 165, 250, 0.25);
+
+  /* --- Radii & Geometry --- */
+  --radius-xs: 8px;
+  --radius-sm: 14px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  --radius-pill: 9999px;
+
+  /* --- Atmospheric Dynamic Background Gradients --- */
+  --weather-clear: radial-gradient(circle at 20% 20%, #38bdf8 0%, #1e3a8a 70%, #0f172a 100%);
+  --weather-clouds: radial-gradient(circle at 30% 30%, #94a3b8 0%, #334155 70%, #0f172a 100%);
+  --weather-rain: radial-gradient(circle at 40% 20%, #0284c7 0%, #1e293b 70%, #090d16 100%);
+  --weather-thunder: radial-gradient(circle at 50% 10%, #6366f1 0%, #311042 60%, #05050c 100%);
+  --weather-snow: radial-gradient(circle at 25% 25%, #cbd5e1 0%, #475569 65%, #0f172a 100%);
+
+  /* --- Status & Telemetry Accents --- */
+  --status-cache-hit: #10b981; /* Emerald green */
+  --status-cache-miss: #f59e0b; /* Amber */
+  --status-error: #ef4444; /* Rose */
+}
+
+/* Base Glassmorphism Utility */
+.glass-panel {
+  background: var(--glass-bg-primary);
+  backdrop-filter: blur(var(--glass-blur-radius)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-radius)) saturate(var(--glass-saturate));
+  border: var(--glass-border-light);
+  box-shadow: var(--glass-shadow-md), var(--glass-border-inner);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.glass-panel-elevated {
+  background: var(--glass-bg-elevated);
+  backdrop-filter: blur(var(--glass-blur-radius)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-radius)) saturate(var(--glass-saturate));
+  border: var(--glass-border-light);
+  box-shadow: var(--glass-shadow-lg), var(--glass-border-inner);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+}
