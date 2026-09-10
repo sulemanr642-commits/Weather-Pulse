@@ -1,14 +1,15 @@
 package com.weatherpulse.client;
 
-import com.weatherpulse.client.dto.OpenMeteoGeocodingResponse;
-import com.weatherpulse.client.dto.OpenMeteoResponse;
-import com.weatherpulse.client.dto.OpenWeatherResponse;
-import com.weatherpulse.client.dto.WeatherData;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.weatherpulse.client.dto.*;
 import com.weatherpulse.client.exception.WeatherApiException;
 import com.weatherpulse.client.exception.WeatherApiException.ErrorCategory;
+import jakarta.annotation.PostConstruct;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -17,12 +18,17 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Credible meteorological HTTP client supporting:
- * 1. Open-Meteo (Default): Global weather models (NOAA, ECMWF, DWD), free, real-time, no API key required.
- * 2. OpenWeatherMap: Enterprise fallback / provider when an API key is provided.
+ * High-credibility, multi-provider meteorological client supporting:
+ * 1. Open-Meteo (Primary): Global numerical weather prediction models (NOAA, ECMWF, DWD). Free, no API key required.
+ * 2. wttr.in (Secondary Live Resilience): Real-time ground observation station feeds worldwide. Free, no API key required.
+ * 3. OpenWeatherMap: Enterprise fallback / provider when a valid API key is configured.
  */
 @Component
 @Slf4j
@@ -30,8 +36,9 @@ public class WeatherApiClient {
 
     private final RestClient restClient;
     private final RestClient openMeteoClient;
+    private final RestClient wttrInClient;
     private final String apiKey;
-    private final java.util.Map<String, double[]> coordinateCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, double[]> coordinateCache = new ConcurrentHashMap<>();
 
     @Setter
     @Value("${weatherpulse.external-api.provider:open-meteo}")
@@ -43,11 +50,47 @@ public class WeatherApiClient {
         this.openMeteoClient = RestClient.builder()
                 .baseUrl("https://api.open-meteo.com")
                 .build();
+        this.wttrInClient = RestClient.builder()
+                .baseUrl("https://wttr.in")
+                .build();
         this.apiKey = apiKey;
     }
 
+    @PostConstruct
+    public void initCoordinates() {
+        try {
+            ClassPathResource resource = new ClassPathResource("data/world_cities.json");
+            if (resource.exists()) {
+                ObjectMapper mapper = new ObjectMapper();
+                try (java.io.InputStream is = resource.getInputStream()) {
+                    byte[] bytes = is.readAllBytes();
+                    String json = new String(bytes, StandardCharsets.UTF_8).replace("\uFEFF", "");
+                    List<Map<String, Object>> list = mapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+                    for (Map<String, Object> item : list) {
+                        String name = (String) item.get("name");
+                        Number lat = (Number) item.get("latitude");
+                        Number lon = (Number) item.get("longitude");
+                        if (name != null && lat != null && lon != null) {
+                            coordinateCache.put(name.trim().toLowerCase(), new double[]{lat.doubleValue(), lon.doubleValue()});
+                        }
+                    }
+                    log.info("Preloaded {} city geographic coordinates into fast in-memory cache for instant real-weather routing.", coordinateCache.size());
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("Could not preload world_cities coordinates: {}", ex.getMessage());
+        }
+    }
+
+    public void registerCoordinates(String cityName, double latitude, double longitude) {
+        if (cityName != null) {
+            coordinateCache.put(cityName.trim().toLowerCase(), new double[]{latitude, longitude});
+        }
+    }
+
     /**
-     * Overloaded method fetching weather by city and country code.
+     * Overloaded method fetching live weather by city and country code.
+     * Uses preloaded in-memory coordinates if available.
      */
     public WeatherData fetchCurrentWeather(String cityName, String countryCode) {
         return fetchCurrentWeather(cityName, countryCode, null, null);
@@ -66,12 +109,17 @@ public class WeatherApiClient {
             return fetchFromOpenWeatherMap(cityName, countryCode);
         }
 
-        // Default & Credible Live Provider: Open-Meteo
+        if ("wttr-in".equalsIgnoreCase(provider)) {
+            return fetchFromWttrIn(cityName, countryCode);
+        }
+
+        // Default & Credible Live Provider: Open-Meteo with automatic wttr.in ground station fallback
         return fetchFromOpenMeteo(cityName, countryCode, latitude, longitude);
     }
 
     /**
-     * Fetches live observations from Open-Meteo (powered by NOAA, ECMWF, and German Weather Service DWD).
+     * Fetches live observations from Open-Meteo (powered by NOAA, ECMWF, and DWD).
+     * If rate limited or unavailable, automatically falls back to wttr.in live ground station feed.
      */
     private WeatherData fetchFromOpenMeteo(String cityName, String countryCode, Double latitude, Double longitude) {
         long startTime = System.currentTimeMillis();
@@ -81,7 +129,7 @@ public class WeatherApiClient {
         Double resolvedLat = latitude;
         Double resolvedLon = longitude;
 
-        // Resolve coordinates via geocoding if not provided
+        // Resolve coordinates from high-speed memory cache if not provided
         if (resolvedLat == null || resolvedLon == null) {
             String cacheKey = cityName.trim().toLowerCase();
             double[] cachedCoords = coordinateCache.get(cacheKey);
@@ -105,68 +153,166 @@ public class WeatherApiClient {
                         resolvedLat = geoResp.getResults().get(0).getLatitude();
                         resolvedLon = geoResp.getResults().get(0).getLongitude();
                         coordinateCache.put(cacheKey, new double[]{resolvedLat, resolvedLon});
-                    } else {
-                        throw new WeatherApiException(
-                                "City '" + cityName + "' was not found by upstream weather provider",
-                                ErrorCategory.CITY_NOT_FOUND, HttpStatus.NOT_FOUND, cityName);
                     }
-                } catch (WeatherApiException ex) {
-                    throw ex;
                 } catch (Exception ex) {
-                    log.error("Geocoding lookup failed for city='{}': {}", cityName, ex.getMessage());
-                    throw new WeatherApiException(
-                            "Geocoding lookup failed for city '" + cityName + "': " + ex.getMessage(),
-                            ErrorCategory.GENERIC_FAILURE, cityName, ex);
+                    log.warn("Geocoding lookup failed for city='{}': {}. Will attempt direct station query via wttr.in.", cityName, ex.getMessage());
                 }
             }
         }
 
-        try {
-            final double finalLat = resolvedLat;
-            final double finalLon = resolvedLon;
+        if (resolvedLat != null && resolvedLon != null) {
+            try {
+                final double finalLat = resolvedLat;
+                final double finalLon = resolvedLon;
 
-            OpenMeteoResponse response = openMeteoClient.get()
+                OpenMeteoResponse response = openMeteoClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/v1/forecast")
+                                .queryParam("latitude", finalLat)
+                                .queryParam("longitude", finalLon)
+                                .queryParam("current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day")
+                                .queryParam("daily", "weather_code,temperature_2m_max,temperature_2m_min")
+                                .queryParam("timezone", "auto")
+                                .build())
+                        .accept(MediaType.APPLICATION_JSON)
+                        .retrieve()
+                        .onStatus(HttpStatusCode::is4xxClientError, (req, resp) -> {
+                            throw new WeatherApiException(
+                                    "Open-Meteo client error: HTTP " + resp.getStatusCode().value(),
+                                    resp.getStatusCode().value() == 429 ? ErrorCategory.RATE_LIMITED : ErrorCategory.GENERIC_FAILURE,
+                                    resp.getStatusCode(), cityName);
+                        })
+                        .onStatus(HttpStatusCode::is5xxServerError, (req, resp) -> {
+                            throw new WeatherApiException(
+                                    "Open-Meteo server outage: HTTP " + resp.getStatusCode().value(),
+                                    ErrorCategory.UPSTREAM_SERVER_ERROR, resp.getStatusCode(), cityName);
+                        })
+                        .body(OpenMeteoResponse.class);
+
+                long duration = System.currentTimeMillis() - startTime;
+                log.info("Successfully received live weather data from Open-Meteo for city='{}' in {}ms", cityName, duration);
+
+                return mapOpenMeteoToWeatherData(response, cityName, countryCode);
+
+            } catch (Exception ex) {
+                log.warn("Open-Meteo query failed for city='{}' ({}). Seamlessly falling back to live ground station feed via wttr.in...",
+                        cityName, ex.getMessage());
+            }
+        }
+
+        // Seamless Live Resilience Fallback: wttr.in real-time surface station feed
+        return fetchFromWttrIn(cityName, countryCode);
+    }
+
+    /**
+     * Fetches real-time ground meteorological observations directly from wttr.in worldwide station network.
+     */
+    public WeatherData fetchFromWttrIn(String cityName, String countryCode) {
+        long startTime = System.currentTimeMillis();
+        log.info("Dispatching live meteorological observation fetch to wttr.in for city='{}'", cityName);
+
+        try {
+            String rawJson = wttrInClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/v1/forecast")
-                            .queryParam("latitude", finalLat)
-                            .queryParam("longitude", finalLon)
-                            .queryParam("current", "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day")
-                            .queryParam("daily", "weather_code,temperature_2m_max,temperature_2m_min")
-                            .queryParam("timezone", "auto")
+                            .path("/" + cityName.trim())
+                            .queryParam("format", "j1")
                             .build())
-                    .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, (req, resp) -> {
-                        throw new WeatherApiException(
-                                "Open-Meteo client error: HTTP " + resp.getStatusCode().value(),
-                                ErrorCategory.GENERIC_FAILURE, resp.getStatusCode(), cityName);
+                    .onStatus(HttpStatusCode::is4xxClientError, (req, r) -> {
+                        throw new WeatherApiException("City '" + cityName + "' not found on wttr.in",
+                                ErrorCategory.CITY_NOT_FOUND, r.getStatusCode(), cityName);
                     })
-                    .onStatus(HttpStatusCode::is5xxServerError, (req, resp) -> {
-                        throw new WeatherApiException(
-                                "Open-Meteo server outage: HTTP " + resp.getStatusCode().value(),
-                                ErrorCategory.UPSTREAM_SERVER_ERROR, resp.getStatusCode(), cityName);
+                    .onStatus(HttpStatusCode::is5xxServerError, (req, r) -> {
+                        throw new WeatherApiException("wttr.in service temporarily unavailable",
+                                ErrorCategory.UPSTREAM_SERVER_ERROR, r.getStatusCode(), cityName);
                     })
-                    .body(OpenMeteoResponse.class);
+                    .body(String.class);
+
+            if (rawJson == null || rawJson.isBlank()) {
+                throw new WeatherApiException("Received empty weather payload from wttr.in",
+                        ErrorCategory.MALFORMED_RESPONSE, HttpStatus.UNPROCESSABLE_ENTITY, cityName);
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            WttrInResponse resp = mapper.readValue(rawJson, WttrInResponse.class);
+
+            if (resp == null || resp.getCurrentCondition() == null || resp.getCurrentCondition().isEmpty()) {
+                throw new WeatherApiException("Received malformed weather payload from wttr.in",
+                        ErrorCategory.MALFORMED_RESPONSE, HttpStatus.UNPROCESSABLE_ENTITY, cityName);
+            }
+
+            WttrInResponse.CurrentCondition cur = resp.getCurrentCondition().get(0);
+            double temp = Double.parseDouble(cur.getTempC());
+            Double feelsLike = cur.getFeelsLikeC() != null ? Double.parseDouble(cur.getFeelsLikeC()) : temp;
+            Integer humidity = cur.getHumidity() != null ? Integer.parseInt(cur.getHumidity()) : null;
+            Double windSpeed = cur.getWindspeedKmph() != null ? Double.parseDouble(cur.getWindspeedKmph()) : null;
+            Integer windDir = cur.getWinddirDegree() != null ? Integer.parseInt(cur.getWinddirDegree()) : null;
+
+            String desc = (cur.getWeatherDesc() != null && !cur.getWeatherDesc().isEmpty())
+                    ? cur.getWeatherDesc().get(0).getValue().trim()
+                    : "Clear";
+            String condition = mapDescriptionToCondition(desc);
+            String iconCode = mapConditionToIcon(condition);
+
+            Double tempMax = null;
+            Double tempMin = null;
+            if (resp.getWeather() != null && !resp.getWeather().isEmpty()) {
+                WttrInResponse.DailyWeather day = resp.getWeather().get(0);
+                if (day.getMaxtempC() != null) tempMax = Double.parseDouble(day.getMaxtempC());
+                if (day.getMintempC() != null) tempMin = Double.parseDouble(day.getMintempC());
+            }
+
+            if (tempMax == null) tempMax = Math.round((temp + 3.0) * 10.0) / 10.0;
+            if (tempMin == null) tempMin = Math.round((temp - 3.0) * 10.0) / 10.0;
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Successfully received live weather data from Open-Meteo for city='{}' in {}ms", cityName, duration);
+            log.info("Successfully received live ground station weather from wttr.in for city='{}' in {}ms (temp={}°C)",
+                    cityName, duration, temp);
 
-            return mapOpenMeteoToWeatherData(response, cityName, countryCode);
+            return WeatherData.builder()
+                    .cityName(cityName)
+                    .countryCode(countryCode)
+                    .temperatureCelsius(temp)
+                    .feelsLikeCelsius(feelsLike)
+                    .tempMinCelsius(tempMin)
+                    .tempMaxCelsius(tempMax)
+                    .humidityPercent(humidity)
+                    .windSpeedKmh(windSpeed)
+                    .windDirectionDegrees(windDir)
+                    .weatherCondition(condition)
+                    .weatherDescription(desc.toLowerCase())
+                    .weatherIconCode(iconCode)
+                    .externalObservedAt(Instant.now())
+                    .fetchedAt(Instant.now())
+                    .build();
 
         } catch (WeatherApiException ex) {
             throw ex;
-        } catch (ResourceAccessException ex) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("Network timeout communicating with Open-Meteo for city='{}' after {}ms: {}", cityName, duration, ex.getMessage());
-            throw new WeatherApiException(
-                    "Connection or read timeout communicating with upstream weather provider",
-                    ErrorCategory.TIMEOUT, cityName, ex);
-        } catch (RestClientException ex) {
-            log.error("REST failure communicating with Open-Meteo for city='{}': {}", cityName, ex.getMessage());
-            throw new WeatherApiException(
-                    "Unexpected failure communicating with weather provider: " + ex.getMessage(),
+        } catch (Exception ex) {
+            log.error("wttr.in request failed for city='{}': {}", cityName, ex.getMessage());
+            throw new WeatherApiException("Failed to fetch live meteorological data for city '" + cityName + "': " + ex.getMessage(),
                     ErrorCategory.GENERIC_FAILURE, cityName, ex);
         }
+    }
+
+    private String mapDescriptionToCondition(String desc) {
+        if (desc == null) return "Clear";
+        String lower = desc.toLowerCase();
+        if (lower.contains("rain") || lower.contains("drizzle") || lower.contains("shower")) return "Rain";
+        if (lower.contains("snow") || lower.contains("blizzard") || lower.contains("sleet") || lower.contains("ice")) return "Snow";
+        if (lower.contains("thunder") || lower.contains("storm")) return "Thunder";
+        if (lower.contains("cloud") || lower.contains("overcast") || lower.contains("fog") || lower.contains("mist")) return "Clouds";
+        return "Clear";
+    }
+
+    private String mapConditionToIcon(String condition) {
+        return switch (condition) {
+            case "Rain" -> "10d";
+            case "Snow" -> "13d";
+            case "Thunder" -> "11d";
+            case "Clouds" -> "03d";
+            default -> "01d";
+        };
     }
 
     private WeatherData mapOpenMeteoToWeatherData(OpenMeteoResponse raw, String cityName, String countryCode) {
