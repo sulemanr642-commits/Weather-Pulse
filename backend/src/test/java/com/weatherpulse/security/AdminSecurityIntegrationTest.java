@@ -112,6 +112,30 @@ class AdminSecurityIntegrationTest {
     }
 
     @Test
+    @DisplayName("Security: POST /api/admin/cities with expired token returns 401 Unauthorized")
+    void testAddCity_ExpiredToken_Returns401() throws Exception {
+        JwtTokenProvider expiredProvider = new JwtTokenProvider();
+        org.springframework.test.util.ReflectionTestUtils.setField(expiredProvider, "jwtSecret", "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970");
+        org.springframework.test.util.ReflectionTestUtils.setField(expiredProvider, "expirationMs", -5000L);
+        org.springframework.test.util.ReflectionTestUtils.setField(expiredProvider, "issuer", "weatherpulse-auth-service");
+        expiredProvider.init();
+
+        String expiredToken = expiredProvider.generateToken("admin", "ROLE_ADMIN");
+
+        CreateCityRequest request = new CreateCityRequest(
+                "Zurich", "CH", new BigDecimal("47.3769"), new BigDecimal("8.5417")
+        );
+
+        mockMvc.perform(post("/api/admin/cities")
+                        .header("Authorization", "Bearer " + expiredToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.title").value("Full Authentication Required"));
+    }
+
+    @Test
     @DisplayName("Security: POST /api/admin/cities with non-admin role returns 403 Forbidden")
     void testAddCity_NonAdminRole_Returns403() throws Exception {
         String userToken = jwtTokenProvider.generateToken("regularUser", "ROLE_USER");

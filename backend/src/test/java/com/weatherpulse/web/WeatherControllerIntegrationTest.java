@@ -125,4 +125,29 @@ class WeatherControllerIntegrationTest {
         // Verify external client was never invoked
         verifyNoInteractions(weatherApiClient);
     }
+
+    @Test
+    @DisplayName("Cache Eviction: When cache is evicted, subsequent request is a MISS")
+    void testCacheEvictionTriggersMiss() throws Exception {
+        when(weatherApiClient.fetchCurrentWeather(eq("Tokyo"), eq("JP")))
+                .thenReturn(mockTokyoWeather);
+
+        // Pre-populate Redis
+        redisTemplate.opsForValue().set(CACHE_KEY_TOKYO, mockTokyoWeather);
+
+        // Request 1: Warm cache HIT
+        mockMvc.perform(get("/api/weather/Tokyo"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Cache", "HIT"));
+
+        // Evict key
+        redisTemplate.delete(CACHE_KEY_TOKYO);
+
+        // Request 2: After eviction, request is a MISS
+        mockMvc.perform(get("/api/weather/Tokyo"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Cache", "MISS"));
+
+        verify(weatherApiClient, times(1)).fetchCurrentWeather(eq("Tokyo"), eq("JP"));
+    }
 }

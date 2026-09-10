@@ -36,6 +36,17 @@ public class WeatherServiceImpl implements WeatherService {
     @Value("${weatherpulse.cache.ttl-ms:600000}")
     private long cacheTtlMs;
 
+    @Value("${weatherpulse.resilience.fallback-enabled:true}")
+    private boolean fallbackEnabled = true;
+
+    public void setFallbackEnabled(boolean fallbackEnabled) {
+        this.fallbackEnabled = fallbackEnabled;
+    }
+
+    public void setCacheTtlMs(long cacheTtlMs) {
+        this.cacheTtlMs = cacheTtlMs;
+    }
+
     @Override
     public WeatherResult getWeatherForCity(String cityName) {
         if (cityName == null || cityName.isBlank()) {
@@ -68,7 +79,7 @@ public class WeatherServiceImpl implements WeatherService {
             return new WeatherResult(freshData, false);
 
         } catch (WeatherApiException ex) {
-            log.warn("External weather API failure for city='{}' ({}): {}. Activating resilient meteorological fallback.",
+            log.warn("External weather API failure for city='{}' ({}): {}.",
                     canonicalCity, ex.getCategory(), ex.getMessage());
 
             // Resilience fallback 1: If Redis had stale data
@@ -77,7 +88,15 @@ public class WeatherServiceImpl implements WeatherService {
                 return new WeatherResult(cachedData, true);
             }
 
+            // Check if fallback simulation is enabled
+            if (!fallbackEnabled) {
+                log.error("Resilience fallback disabled. Propagating ExternalServiceException for city='{}'", canonicalCity);
+                throw new ExternalServiceException(
+                        "Upstream meteorological service is currently unavailable for city '" + canonicalCity + "' and no fallback data is available.", ex);
+            }
+
             // Resilience fallback 2: Synthesize realistic physics-based observation from city coordinates
+            log.info("Activating resilient meteorological fallback observation for city='{}'", canonicalCity);
             WeatherData fallbackData = generateFallbackWeatherData(city);
             cacheWeather(city.getName(), fallbackData);
             return new WeatherResult(fallbackData, false);
