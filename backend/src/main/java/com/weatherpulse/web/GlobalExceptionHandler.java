@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.net.URI;
 import java.time.Instant;
 
+import com.weatherpulse.service.exception.CityAlreadyExistsException;
+import com.weatherpulse.service.exception.InvalidCredentialsException;
+import org.springframework.security.access.AccessDeniedException;
+
 /**
  * Global Exception Handler converting domain exceptions and validation errors
  * into standardized RFC 7807 Problem Details payloads.
@@ -23,6 +27,46 @@ import java.time.Instant;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
+        log.warn("Authentication failed on path '{}': {}", request.getRequestURI(), ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problem.setTitle("Unauthorized");
+        problem.setType(URI.create("https://weatherpulse.internal/errors/invalid-credentials"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(problem);
+    }
+
+    @ExceptionHandler(CityAlreadyExistsException.class)
+    public ResponseEntity<ProblemDetail> handleCityAlreadyExists(CityAlreadyExistsException ex, HttpServletRequest request) {
+        log.warn("City conflict error on path '{}': {}", request.getRequestURI(), ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setTitle("Conflict");
+        problem.setType(URI.create("https://weatherpulse.internal/errors/duplicate-city"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(problem);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        log.warn("Access denied on path '{}': {}", request.getRequestURI(), ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+                "You do not have permission to execute this administrative operation.");
+        problem.setTitle("Forbidden");
+        problem.setType(URI.create("https://weatherpulse.internal/errors/forbidden"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+        problem.setProperty("timestamp", Instant.now());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(problem);
+    }
 
     @ExceptionHandler(CityNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleCityNotFound(CityNotFoundException ex, HttpServletRequest request) {

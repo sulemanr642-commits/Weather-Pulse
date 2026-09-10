@@ -1,5 +1,9 @@
 package com.weatherpulse.config;
 
+import com.weatherpulse.security.JwtAccessDeniedHandler;
+import com.weatherpulse.security.JwtAuthenticationEntryPoint;
+import com.weatherpulse.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -8,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -17,11 +22,16 @@ import java.util.List;
 /**
  * Spring Security Configuration.
  * Enforces stateless session management, permits unauthenticated access to public weather
- * and city endpoints, and prepares protected routes (/api/admin/**) for JWT authentication.
+ * and city endpoints, and protects /api/admin/** with cryptographic JWT authentication.
  */
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -29,16 +39,21 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                .accessDeniedHandler(jwtAccessDeniedHandler)
+            )
             .authorizeHttpRequests(auth -> auth
-                // Public weather and city discovery paths
+                // Public weather, city discovery, and auth paths (fully open, permitAll)
                 .requestMatchers(HttpMethod.GET, "/api/weather/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/cities").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 .requestMatchers("/error").permitAll()
-                // Secured admin mutations (JWT validation integrated in Phase 6)
-                .requestMatchers("/api/admin/**").authenticated()
-                .anyRequest().permitAll()
-            );
+                // Secured admin mutations: strictly require valid JWT with ROLE_ADMIN
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

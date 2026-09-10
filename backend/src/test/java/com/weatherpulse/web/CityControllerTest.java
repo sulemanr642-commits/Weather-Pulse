@@ -35,6 +35,9 @@ class CityControllerTest {
     @MockBean
     private CityRepository cityRepository;
 
+    @MockBean
+    private com.weatherpulse.security.JwtTokenProvider jwtTokenProvider;
+
     @Test
     @DisplayName("GET /api/cities: Returns unpaginated list for backward compatibility")
     void testGetTrackedCities_Unpaginated() throws Exception {
