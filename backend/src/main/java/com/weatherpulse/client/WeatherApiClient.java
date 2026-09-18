@@ -443,22 +443,18 @@ public class WeatherApiClient {
             return mapOpenWeatherToWeatherData(response, cityName, countryCode);
 
         } catch (WeatherApiException ex) {
-            log.warn("OpenWeatherMap failure for city='{}': category={}, message={}",
+            log.warn("OpenWeatherMap failure for city='{}': category={}, message={}. Falling back to Open-Meteo...",
                     cityName, ex.getCategory(), ex.getMessage());
-            throw ex;
+            return fetchFromOpenMeteo(cityName, countryCode, null, null);
 
         } catch (ResourceAccessException ex) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("Network timeout for city='{}' after {}ms: {}", cityName, duration, ex.getMessage());
-            throw new WeatherApiException(
-                    "Connection or read timeout communicating with upstream weather provider",
-                    ErrorCategory.TIMEOUT, cityName, ex);
+            log.warn("Network timeout communicating with OpenWeatherMap for city='{}' after {}ms: {}. Falling back to Open-Meteo...", cityName, duration, ex.getMessage());
+            return fetchFromOpenMeteo(cityName, countryCode, null, null);
 
-        } catch (RestClientException ex) {
-            log.error("Unexpected error executing REST call for city='{}': {}", cityName, ex.getMessage());
-            throw new WeatherApiException(
-                    "Unexpected failure communicating with weather provider: " + ex.getMessage(),
-                    ErrorCategory.GENERIC_FAILURE, cityName, ex);
+        } catch (Exception ex) {
+            log.warn("Unexpected failure communicating with OpenWeatherMap for city='{}': {}. Falling back to Open-Meteo...", cityName, ex.getMessage());
+            return fetchFromOpenMeteo(cityName, countryCode, null, null);
         }
     }
 

@@ -76,11 +76,21 @@ Ensure the following runtimes and tools are installed locally before starting:
 
 ## 4. How to Run Locally
 
+### Quick Start (Windows All-in-One)
+If you are running on Windows with local PostgreSQL and Redis installed, you can start both services with a single command:
+
+```bash
+# Start PostgreSQL and Redis daemons in the background
+scripts\start-services.bat
+```
+
+Alternatively, start each service individually:
+
 ### Step 1: Start PostgreSQL
 Ensure PostgreSQL is active and initialize the `weatherpulse` database:
 
 ```bash
-# Verify PostgreSQL is running
+# Verify PostgreSQL is running and database exists
 psql -U postgres -c "CREATE DATABASE weatherpulse;"
 ```
 
@@ -136,9 +146,10 @@ All secrets and operational properties are externalized via environment variable
 | `SPRING_DATA_REDIS_HOST` | Redis cache hostname / IP | `localhost` | `redis.internal` |
 | `SPRING_DATA_REDIS_PORT` | Redis cache port | `6379` | `6379` |
 | `SPRING_DATA_REDIS_PASSWORD` | Redis authentication password | *(Empty / None)* | `k8s_secret_redis_pass` |
-| `WEATHERPULSE_SECURITY_JWT_SECRET` | HMAC-SHA512 secret key (min 64 chars) | `WeatherPulseUltraSecretKey...` | *(Cryptographically random 512-bit key)* |
+| `WEATHERPULSE_JWT_SECRET` | HMAC-SHA256/512 secret key (min 256 bits) | `404E635266556A586E32...` | *(Cryptographically random 256/512-bit key)* |
+| `WEATHERPULSE_JWT_EXPIRATION_MS` | JWT expiration duration in milliseconds | `7200000` (2 hours) | `7200000` |
 | `WEATHERPULSE_WEATHER_PROVIDER` | Primary meteorological data provider | `open-meteo` | `open-meteo` |
-| `WEATHERPULSE_OPENWEATHER_API_KEY` | Optional OpenWeatherMap API key | `demo_openweather_api_key` | `abc123openweatherkey` |
+| `WEATHERPULSE_OPENWEATHER_API_KEY` | Optional OpenWeatherMap fallback API key | `demo_openweather_api_key` | `abc123openweatherkey` |
 | `WEATHERPULSE_CACHE_TTL_MS` | Weather data Redis TTL (milliseconds) | `600000` (10 minutes) | `600000` |
 | `WEATHERPULSE_SCHEDULER_ENABLED` | Toggle background scheduled refresh | `true` | `true` |
 | `WEATHERPULSE_ADMIN_DEFAULT_USERNAME` | Seed administrator username | `admin` | `superadmin` |

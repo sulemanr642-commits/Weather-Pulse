@@ -10,26 +10,37 @@
   --text-secondary: rgba(255, 255, 255, 0.70);
   --text-muted: rgba(255, 255, 255, 0.45);
 
-  /* --- Surface Translucency & Blur --- */
-  --glass-bg-primary: rgba(255, 255, 255, 0.12);
-  --glass-bg-secondary: rgba(255, 255, 255, 0.06);
-  --glass-bg-elevated: rgba(255, 255, 255, 0.18);
-  --glass-bg-dark: rgba(15, 23, 42, 0.65);
-  --glass-blur-radius: 20px;
-  --glass-blur-subtle: 10px;
-  --glass-saturate: 180%;
+  /* --- Fluid Typography (Scales smoothly across 375px to 1440px) --- */
+  --font-size-hero-temp: clamp(46px, 7vw + 12px, 72px);
+  --font-size-city-heading: clamp(26px, 3.2vw + 10px, 42px);
+  --font-size-metric-value: clamp(20px, 2vw + 8px, 28px);
 
-  /* --- Borders & Specular Bevels --- */
-  --glass-border-light: 1px solid rgba(255, 255, 255, 0.22);
-  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.12);
-  --glass-border-inner: inset 0 1px 0 rgba(255, 255, 255, 0.35); /* Top specular bevel */
-  --glass-border-focus: 1px solid rgba(96, 165, 250, 0.7);
+  /* --- Fluid Spacing Scale --- */
+  --spacing-card-padding: clamp(18px, 2.5vw + 8px, 36px);
+  --spacing-app-padding: clamp(12px, 2vw + 6px, 28px);
+  --spacing-gap-hero: clamp(16px, 2vw + 8px, 28px);
+  --spacing-gap-metrics: clamp(10px, 1.5vw + 4px, 16px);
+
+  /* --- Surface Translucency & Fluid Blur (Calibrated for WCAG AA Contrast >= 4.5:1 across all scenes) --- */
+  --glass-bg-primary: rgba(15, 23, 42, 0.60);
+  --glass-bg-secondary: rgba(15, 23, 42, 0.40);
+  --glass-bg-elevated: rgba(15, 23, 42, 0.72);
+  --glass-bg-dark: rgba(15, 23, 42, 0.88);
+  --glass-blur-radius: clamp(14px, 1.2vw + 8px, 24px);
+  --glass-blur-subtle: clamp(8px, 1vw + 4px, 12px);
+  --glass-saturate: 160%;
+
+  /* --- Borders & Specular Bevels (Deliberately Quieted) --- */
+  --glass-border-light: 1px solid rgba(255, 255, 255, 0.14);
+  --glass-border-subtle: 1px solid rgba(255, 255, 255, 0.08);
+  --glass-border-inner: inset 0 1px 0 rgba(255, 255, 255, 0.18); /* Soft top specular bevel */
+  --glass-border-focus: 1px solid rgba(56, 189, 248, 0.6);
 
   /* --- Depth & Elevation Shadows --- */
-  --glass-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.16);
-  --glass-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.28);
-  --glass-shadow-glow: 0 0 30px rgba(96, 165, 250, 0.25);
+  --glass-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --glass-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --glass-shadow-lg: 0 16px 44px rgba(0, 0, 0, 0.22);
+  --glass-shadow-glow: 0 0 20px rgba(56, 189, 248, 0.15);
 
   /* --- Radii & Geometry --- */
   --radius-xs: 8px;
@@ -51,7 +62,7 @@
   --status-error: #ef4444; /* Rose */
 }
 
-/* Base Glassmorphism Utility */
+/* Base Glassmorphism Utility (Restrained highlights prioritizing legibility) */
 .glass-panel {
   background: var(--glass-bg-primary);
   backdrop-filter: blur(var(--glass-blur-radius)) saturate(var(--glass-saturate));
@@ -93,3 +104,63 @@
   animation: shimmer 2s infinite ease-in-out;
   border-radius: var(--radius-sm);
 }
+
+/* ==============================================================================
+   Responsive Layout Utilities & Breakpoints
+   ============================================================================== */
+
+.admin-desktop-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-mobile-cards {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .admin-desktop-table {
+    display: none !important;
+  }
+  .admin-mobile-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/* ==============================================================================
+   Accessibility Utilities: WCAG AA Keyboard Focus & Screen Reader Regions
+   ============================================================================== */
+
+:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.3) !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[role="combobox"]:focus-visible,
+[role="option"]:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid #38bdf8 !important;
+  outline-offset: 2px !important;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+
